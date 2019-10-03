@@ -1,6 +1,9 @@
+import haxe.zip.Reader;
+import haxe.Timer;
+
 class Main
 {
-	static var _source:String = "map.xd";
+	static var _source:String = "test.xd";
 	static var _destination:String = "export";
 	static function main()
 	{
@@ -16,6 +19,13 @@ class Main
 				case "-dst":  _destination = args[i + 1];	break;
 			}
 		}
-		trace(args);
+
+		var now = Timer.stamp();
+
+		var input = sys.io.File.read(_source);
+		var entries = new Reader(input).read();
+		input.close();
+		
+		trace(Timer.stamp() - now);
 	}
 }
