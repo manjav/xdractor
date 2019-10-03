@@ -1,3 +1,5 @@
+import sys.io.File;
+import sys.FileSystem;
 import haxe.format.JsonParser;
 import haxe.zip.Entry;
 import haxe.zip.Reader;
@@ -29,8 +31,12 @@ class Main
 		input.close();
 
 		var files = readManifest(entries);
+		for (key => value in files)
+			for (e in entries)
+				if( e.fileName == value )
+						save(e, key);
 		
-		trace(Timer.stamp() - now, files);
+		trace(Timer.stamp() - now);
 	}
 	static function readManifest(entries:List<Entry>):Map<String, String>
 	{
@@ -63,4 +69,16 @@ class Main
 		}
 		return ret;
 	}
+
+	static function save (e:Entry, path:String):Void
+	{
+		var data = e.compressed ? Reader.unzip(e) : e.data;
+		// trace(e.fileName, path);
+		if( !FileSystem.exists(_destination) )
+			FileSystem.createDirectory(_destination);
+		if( !FileSystem.exists(_destination + "/images") )
+			FileSystem.createDirectory(_destination +  "/images");
+		File.saveBytes(path, data);
+	}
+
 }
