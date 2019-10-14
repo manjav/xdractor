@@ -5,6 +5,12 @@
 			"name": "Haxe Interpreter",
 			"type": "haxe-eval",
 			"request": "launch"
-		}
+		},
+		{
+			"name": "HXCPP",
+			"type": "hxcpp",
+			"request": "launch",
+			"program": "${workspaceFolder}/bin/cpp/XDractor.exe"
+	}
 	]
 }
