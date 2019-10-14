@@ -1,4 +1,8 @@
+# --dst sdf
 -cp src
 -D analyzer-optimize
--main Main
---interp
+-main XDractor 
+# --interp
+# -lib hxcpp-debug-server
+-cpp bin/cpp
+# -cs bin/cs
