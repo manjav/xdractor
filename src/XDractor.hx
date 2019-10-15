@@ -9,7 +9,7 @@ import haxe.Timer;
 class XDractor
 {
 	static var _source:String = "test.xd";
-	static var _destination:String = "export";
+	static var _destination:String = null;
 	static function main()
 	{
 		// receive args
@@ -21,6 +21,8 @@ class XDractor
 			if( args[i] == "-src" ) _source				= args[i + 1];
 			if( args[i] == "-dst" ) _destination	= args[i + 1];
 		}
+		if( _destination == null )
+			_destination = _source.split(".")[0];
 
 		var now = Timer.stamp();
 
