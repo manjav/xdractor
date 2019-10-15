@@ -1,7 +1,7 @@
+import haxe.Json;
 import haxe.io.Bytes;
 import sys.io.File;
 import sys.FileSystem;
-import haxe.format.JsonParser;
 import haxe.zip.Entry;
 import haxe.zip.Reader;
 import haxe.Timer;
@@ -31,17 +31,10 @@ class XDractor
 		var entries = new Reader(input).read();
 		input.close();
 
-		// remove last exports
-		deleteDirRecursively(_destination);
-		FileSystem.createDirectory(_destination);
-
 		// manifest reaading
-		var files = readManifest(entries);
-		var exports = getExports(entries, files);
-		for (key => value in files)
-			for (e in entries)
-				if( e.fileName == value )
-						save(e, key, exports);
+		var resources = readManifest(entries);
+		var exports = getExports(entries, resources);
+		save(exports);
 		
 		trace(Timer.stamp()*1000 - now*1000 + " ms.\nSource:" + _source  + " Destination:" + _destination );
 	}
@@ -54,7 +47,7 @@ class XDractor
 			if( e.fileName != "manifest" )
 				continue;
 			var data = Reader.unzip(e);
-			var json = JsonParser.parse(data.getString(0,data.length));
+			var json = Json.parse(data.getString(0,data.length));
 			var children:Array<Dynamic> = json.children;
 			for (c in children)
 			{
@@ -77,54 +70,73 @@ class XDractor
 		return ret;
 	}
 
-	static function getExports(entries:List<Entry>, files:Map<String, String>):Map<String, Bool>
+	static function getExports(entries:List<Entry>, resources:Map<String, String>):Map<String, Bytes>
 	{
-		var exports = new Map<String, Bool>();
-		for (key => value in files)
+		var exports = new Map<String, Bytes>();
+		for (key => value in resources)
 		if( value.substr(value.lastIndexOf(".")) == ".agc" )
 		for (e in entries)
 		if( e.fileName == value )
 		{
+			var jx = {children:[{artboard:{children:[]}}]};
 			var b:Bytes = Reader.unzip(e);
-			var json = JsonParser.parse(b.getString(0, b.length));
+			var jring = b.getString(0, b.length);
+			var json = Json.parse(jring);
 			var children:Array<Dynamic> = json.children[0].artboard.children;
 			for( c in children )
-				loadChild(exports, c);
+				loadChild(entries, exports, c, children);
+
+			exports.set(key, Bytes.ofString(Json.stringify(json)));
 		}
 		return exports;
 	}
 
-	static function loadChild(exports:Map<String, Bool>, c:Dynamic)
+	static function loadChild(entries:List<Entry>, exports:Map<String, Bytes>, c:Dynamic, childs:Array<Dynamic>)
 	{
+		if( c.meta.ux.markedForExport == null )
+		{
+			childs.remove(c);
+			return;
+		}
+
 		if( c.type == "group" )
 		{
 			var children:Array<Dynamic> = c.group.children;
 			for( c in children )
-				loadChild(exports, c);
+				loadChild(entries, exports, c, children);
 			return;
 		}
 		if( c.style.fill.type == "pattern" )
-			exports.set(c.style.fill.pattern.meta.ux.uid, c.meta.ux.markedForExport!=null?true:false);
+			exports.set(c.style.fill.pattern.meta.ux.uid + ".png", getEntry(entries, "resources/" + c.style.fill.pattern.meta.ux.uid).data);
 			// trace(c.name, c.style.fill.pattern.meta.ux.uid, c.meta.ux.markedForExport!=null?true:false);
 	}
 
-	static function save (e:Entry, path:String, exports:Map<String, Bool>):Void
+	static function getEntry(entries:List<Entry>, name:String):Entry
 	{
-		// decompress compressed files
-		var data = e.compressed ? Reader.unzip(e) : e.data;
-		// create images folder
-		var name:Array<String> = path.split(".");
-		var folder:String = "/";
-		if( name[1] == "png" || name[1] == "jpg" )
+		for( e in entries )
+			if( e.fileName == name )
+				return e;
+		return null;
+	}
+
+	static function save (exports:Map<String, Bytes>):Void
+	{
+		// renew last exports
+		deleteDirRecursively(_destination);
+		FileSystem.createDirectory(_destination);
+
+		for (key => value in exports)
 		{
-			folder = "/images/";
-			// trace(name, exports.exists(name[0]));
-			if( !exports.exists(name[0]) || !exports.get(name[0]) )
-				return;
+			var name:Array<String> = key.split(".");
+			var folder:String = "/";
+			if( name[1] == "png" || name[1] == "jpg" )
+				folder = "/images/";
+
+			// create images folder
+			if( !FileSystem.exists(_destination + folder) )
+				FileSystem.createDirectory(_destination + folder);
+			File.saveBytes(_destination + folder + key, value);
 		}
-		if( !FileSystem.exists(_destination + folder) )
-			FileSystem.createDirectory(_destination + folder);
-		File.saveBytes(_destination + folder + path, data);
 	}
 
 	static function deleteDirRecursively(path:String) : Void
