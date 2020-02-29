@@ -3,6 +3,7 @@
 -D analyzer-optimize
 -main XDractor 
 # --interp
+--interp
 # -lib hxcpp-debug-server
--cpp bin/cpp
+# -cpp bin/cpp
 # -cs bin/cs
